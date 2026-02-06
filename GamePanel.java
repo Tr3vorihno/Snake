@@ -1,7 +1,7 @@
-/**
- *  TODO: rimuovere il flikkering della finestra
+/*
+ *  TODO: aggiungere gioco "infinito" quindi tasto di restart del gioco
+ *        aggiungere punteggi e record con classifica tramite file
  */
-
 
 import java.awt.*;
 import javax.swing.*;
@@ -13,12 +13,17 @@ import java.awt.event.KeyEvent;
 import java.util.Scanner;
 import java.io.FileReader;
 import java.io.IOException;
+import javax.imageio.ImageIO;
+import java.io.File;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+
 public class GamePanel extends JPanel implements ActionListener{
 
 
     //clock
     private Timer timer;
-    private static int DELAY = 100; // velocita di refresh in ms
+    private static int DELAY = 120; // velocita di refresh in ms
 
     //impostazioni campo da gioco
     private final static Color FIELD_COLOR_1 = new Color(138, 201, 38);//chiaro
@@ -45,16 +50,21 @@ public class GamePanel extends JPanel implements ActionListener{
     private boolean mela_mangiata = true;
     private boolean collisione = false;
     private final static String FILE_END_GAME = "game_over.txt";
+    private final static String FILE_MENU = "menu.txt";
     private final static String RIGA_NERA = "________________________________________";
     private Image offScreenImage;
     private Graphics offScreenGraphics;
-
-    private Apple mela;
+    private static boolean FLIKKER_END_GAME = false; 
+    private static int FLIKKER_TIMER = 0; 
+    private static boolean GAME_STARTED = false;
+    private Apple mela = new Apple(((int)(Math.random()*(SCREEN_WIDTH/DIM_GRID_LINES))*DIM_GRID_LINES),((int)(Math.random()*(SCREEN_HEIGHT/DIM_GRID_LINES))*DIM_GRID_LINES));
     private Snake[] player = new Snake[MAX_SIZE_SNAKE_VECTOR];
     private BufferedImage backgroundBuffer;  // CREO UN IMMAGINE DELLE SFONDO CHE POI CARICO UNA VOLTA SOLA NEL COSTRUTTORE
-
+    private JButton playButton;
+    private JButton title;
+    private JButton scritta_finale;
     public GamePanel(){
-
+        this.setLayout(null);
         timer = new Timer(DELAY, this);
         timer.start();
 
@@ -79,7 +89,8 @@ public class GamePanel extends JPanel implements ActionListener{
         }
         g2d.dispose();
         player[0] = new Snake(); // init del serpente tramite costruttore di default
-        //player[1] = new Snake(player[0].getX(),player[0].getY()+DIM_GRID_LINES);
+        System.out.println("Setup playbuyttonme");
+        setupPlayButton();
     }
     protected void paintComponent(Graphics g) {
         /*
@@ -94,36 +105,51 @@ public class GamePanel extends JPanel implements ActionListener{
             offScreenImage = createImage(SCREEN_WIDTH, SCREEN_HEIGHT);
             offScreenGraphics = offScreenImage.getGraphics();
         }
-        
-        if(collisione){// CONTROLLO SE IN QUELL'ISTANTE VADO A COLLIDERE CON QUALCOSA
-            drawEndGame();
-        }else{
-            
-            offScreenGraphics.clearRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);// PULISCO L'IMMAGINE
-            offScreenGraphics.drawImage(backgroundBuffer,0,0,null);// CARICO L'IMMAGINE CON LO SFONFO A SCACCHI
-
-            for(int i = 0; i < DIM_EFFETTIVA_SNAKE; i++) {// DISEGNO IL SERPENTE NEL SUO STATO ATTUALE
-                offScreenGraphics.setColor(Color.BLACK);
-                offScreenGraphics.fillRect(player[i].getX(),player[i].getY(),DIM_GRID_LINES,DIM_GRID_LINES);
-                if(i == 0) offScreenGraphics.setColor(SNAKE_HEAD_COLOR);
-                else{offScreenGraphics.setColor(SNAKE_BODY_COLOR);}
-                offScreenGraphics.fillRect(player[i].getX()+PADDING_SNAKE, player[i].getY()+PADDING_SNAKE, MAX_SIZE_SNAKE_DRAW, MAX_SIZE_SNAKE_DRAW);
+        if(GAME_STARTED){
+            if(collisione){// CONTROLLO SE IN QUELL'ISTANTE VADO A COLLIDERE CON QUALCOSA
+                drawEndGame();
+            }else{
+                drawGame();
             }
-            if(mela_mangiata){// SE LA MELA È STATA MANGIATA CREO UNA NUOVA MELA CON COORDINATE RANDOM
-                mela = new Apple(((int)(Math.random()*(SCREEN_WIDTH/DIM_GRID_LINES))*DIM_GRID_LINES),((int)(Math.random()*(SCREEN_HEIGHT/DIM_GRID_LINES))*DIM_GRID_LINES));
-                mela_mangiata = false;
-            }
-            // DISEGNO LA MELA A SCHERMO
-            offScreenGraphics.setColor(Color.BLACK);
-            offScreenGraphics.fillRect(mela.getX(),mela.getY(),DIM_GRID_LINES,DIM_GRID_LINES);
-            offScreenGraphics.setColor(APPLE_COLOR);
-            offScreenGraphics.fillRect(mela.getX()+PADDING_APPLE,mela.getY()+PADDING_APPLE,MAX_SIZE_APPLE_DRAW,MAX_SIZE_APPLE_DRAW);
+        }else{// menu iniziale
+            drawStartingMenu();
+            //setupPlayButton();
         }
+        
         // DISEGNO EFFETTIVAMENTE L'IMMAGINE A SCHERMO IN UN COLPO SOLO
         // LO METTO FUORI DALL'IF PERCHÈ offScreenGraphics È GLOBALE E MI PERMETTE DI SFRUTTARLO ANCHE PER LA CASISTICA GAME OVER
         g.drawImage(offScreenImage, 0, 0, this);
+        //setupPlayButton();
+    }
+    public void reset(){
+        //playButton.setVisible(true);
+        //title.setVisible(true);
+        GAME_STARTED = false;
+        DIM_EFFETTIVA_SNAKE = 1;
+        player[0] = new Snake();
+        direction = 'w';
+        mela_mangiata = true;
+        collisione = false;
+        scritta_finale.setVisible(false);
+        playButton.setVisible(false); // Nascondi quello che esiste già
+        title.setVisible(false);      // Nascondi quello che esiste già
+        timer.restart();
+        
+        repaint();
     }
     public void drawEndGame(){
+        
+        scritta_finale.setVisible(true);
+
+        Color scritta_end_game;
+        if(FLIKKER_TIMER % 5 == 0){
+            FLIKKER_END_GAME = !FLIKKER_END_GAME;
+            FLIKKER_TIMER = 0;
+        } 
+
+        if(FLIKKER_END_GAME) scritta_end_game = new Color(244, 0, 0);
+        else{scritta_end_game = new Color(244, 78, 63);}
+            
         String temp = "";
         int dim = contaRigheFile();
         int offset = ((SCREEN_HEIGHT/DIM_GRID_LINES)-dim)/2;
@@ -138,7 +164,7 @@ public class GamePanel extends JPanel implements ActionListener{
                 for(int j = 0; j<(SCREEN_WIDTH/DIM_GRID_LINES) ; j++){
                      if(temp.charAt(j) == 'X'){
                         // disegno quadrato rosso di game over
-                        offScreenGraphics.setColor(Color.RED);
+                        offScreenGraphics.setColor(scritta_end_game);
                     }else{
                         offScreenGraphics.setColor(Color.BLACK);
                         // disegno quadrato nero di sfondo
@@ -150,6 +176,42 @@ public class GamePanel extends JPanel implements ActionListener{
         }catch(Exception e){
             e.printStackTrace();
         }
+        FLIKKER_TIMER++;
+    }
+    public void drawGame(){
+        playButton.setVisible(false);
+        title.setVisible(false);
+        scritta_finale.setVisible(false);
+        offScreenGraphics.clearRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);// PULISCO L'IMMAGINE
+        offScreenGraphics.drawImage(backgroundBuffer,0,0,null);// CARICO L'IMMAGINE CON LO SFONFO A SCACCHI
+
+        for(int i = 0; i < DIM_EFFETTIVA_SNAKE; i++) {// DISEGNO IL SERPENTE NEL SUO STATO ATTUALE
+            offScreenGraphics.setColor(Color.BLACK);
+            offScreenGraphics.fillRect(player[i].getX(),player[i].getY(),DIM_GRID_LINES,DIM_GRID_LINES);
+            if(i == 0) offScreenGraphics.setColor(SNAKE_HEAD_COLOR);
+            else{offScreenGraphics.setColor(SNAKE_BODY_COLOR);}
+            offScreenGraphics.fillRect(player[i].getX()+PADDING_SNAKE, player[i].getY()+PADDING_SNAKE, MAX_SIZE_SNAKE_DRAW, MAX_SIZE_SNAKE_DRAW);
+        }
+        if(mela_mangiata){// SE LA MELA È STATA MANGIATA CREO UNA NUOVA MELA CON COORDINATE RANDOM
+            mela = new Apple(((int)(Math.random()*(SCREEN_WIDTH/DIM_GRID_LINES))*DIM_GRID_LINES),((int)(Math.random()*(SCREEN_HEIGHT/DIM_GRID_LINES))*DIM_GRID_LINES));
+            mela_mangiata = false;
+        }
+        // DISEGNO LA MELA A SCHERMO
+        offScreenGraphics.setColor(Color.BLACK);
+        offScreenGraphics.fillRect(mela.getX(),mela.getY(),DIM_GRID_LINES,DIM_GRID_LINES);
+        offScreenGraphics.setColor(APPLE_COLOR);
+        offScreenGraphics.fillRect(mela.getX()+PADDING_APPLE,mela.getY()+PADDING_APPLE,MAX_SIZE_APPLE_DRAW,MAX_SIZE_APPLE_DRAW);
+    }
+    public void drawStartingMenu(){
+        title.setVisible(true);
+        playButton.setVisible(true);
+        offScreenGraphics.setColor(FIELD_COLOR_2);
+        for(int i = 0; i < (SCREEN_HEIGHT/DIM_GRID_LINES) ; i++){
+            for(int j = 0; j<(SCREEN_WIDTH/DIM_GRID_LINES) ; j++){       
+                offScreenGraphics.fillRect(j * DIM_GRID_LINES, i * DIM_GRID_LINES, DIM_GRID_LINES, DIM_GRID_LINES);
+            }
+        }
+        
     }
     public int contaRigheFile(){
         String temp = "";
@@ -166,17 +228,12 @@ public class GamePanel extends JPanel implements ActionListener{
         }
         return i;
     }
-    public void actionPerformed(ActionEvent e) {
-        // Questo codice viene eseguito automaticamente ogni 100ms
-        
-        // A. Fai muovere il serpente (aggiorni le coordinate x,y)     
-        hasEaten();
-        checkCollisions();
-        move(); 
-
-        // B. Controlli se ha mangiato o sbattuto
-        //
-        
+    public void actionPerformed(ActionEvent e) {// codice eseguito automaticamente ogni DELAY millisecondi   
+        if(GAME_STARTED){
+            hasEaten();
+            checkCollisions();
+            move(); 
+        }
         repaint(); 
         Toolkit.getDefaultToolkit().sync();//<--- comando muy importante per la fluidità
     }
@@ -247,4 +304,64 @@ public class GamePanel extends JPanel implements ActionListener{
             if(player[0].getX() == player[i].getX() && player[0].getY() == player[i].getY()) collisione = true;
         }
     }
+    private void setupPlayButton() {
+        
+        ImageIcon btnIcon = new ImageIcon("play.png"); // Assicurati che il file si chiami così
+        ImageIcon serpe = new ImageIcon("snake.png");
+        int btnWidth_snake = 400; 
+        int btnHeight_snake = 200;
+        playButton = new JButton(btnIcon);
+        title = new JButton(serpe);
+        title.setBounds(150, 70, 300, 80);
+        title.setBorderPainted(false);      // Niente bordo
+        title.setContentAreaFilled(false);  // Niente sfondo grigio
+        title.setFocusPainted(false);       // Niente rettangolino di selezione
+        title.setOpaque(false);
+        title.setBorderPainted(false);
+        title.setEnabled(true);
+        title.setFocusable(false);
+
+        int x = (SCREEN_WIDTH - 230) / 2;
+        int y = SCREEN_HEIGHT - 150;            // 150 pixel dal fondo
+        playButton.setBounds(x, y, 230, 100);
+        playButton.setBorderPainted(false);      // Niente bordo
+        playButton.setContentAreaFilled(false);  // Niente sfondo grigio
+        playButton.setFocusPainted(false);       // Niente rettangolino di selezione
+        playButton.setOpaque(false);
+        playButton.setBorderPainted(false);
+        playButton.setFocusable(false);
+        // 6. Cosa succede quando clicchi
+        playButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                GAME_STARTED = true;
+                //this.requestFocusInWindow();
+                playButton.setVisible(false);
+                title.setVisible(false);
+            }
+        });
+        scritta_finale = new JButton();
+        scritta_finale.setBounds(0,0,SCREEN_HEIGHT,SCREEN_WIDTH);
+        scritta_finale.setOpaque(false);            
+        scritta_finale.setContentAreaFilled(false); 
+        scritta_finale.setBorderPainted(false);     
+        scritta_finale.setFocusable(false);
+        scritta_finale.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                scritta_finale.setVisible(false);
+                //timer.stop();
+                reset();
+            }
+        });
+
+        scritta_finale.setVisible(false);
+        playButton.setVisible(false);
+        title.setVisible(false);
+
+        this.add(scritta_finale);
+        this.add(playButton);
+        this.add(title);
+    }
+    
 }
