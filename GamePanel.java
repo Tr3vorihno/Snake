@@ -1,3 +1,8 @@
+/**
+ *  TODO: rimuovere il flikkering della finestra
+ */
+
+
 import java.awt.*;
 import javax.swing.*;
 import java.awt.image.BufferedImage;
@@ -5,7 +10,9 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-
+import java.util.Scanner;
+import java.io.FileReader;
+import java.io.IOException;
 public class GamePanel extends JPanel implements ActionListener{
 
 
@@ -37,6 +44,10 @@ public class GamePanel extends JPanel implements ActionListener{
     //impostazioni partita
     private boolean mela_mangiata = true;
     private boolean collisione = false;
+    private final static String FILE_END_GAME = "game_over.txt";
+    private final static String RIGA_NERA = "________________________________________";
+    private Image offScreenImage;
+    private Graphics offScreenGraphics;
 
     private Apple mela;
     private Snake[] player = new Snake[MAX_SIZE_SNAKE_VECTOR];
@@ -48,8 +59,9 @@ public class GamePanel extends JPanel implements ActionListener{
         timer.start();
 
         this.setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
-        this.setBackground(Color.WHITE);
+        this.setBackground(Color.BLACK);
         this.addKeyListener(new MyKeyAdapter());
+        this.setDoubleBuffered(true);
         this.setFocusable(true); // Importante per leggere i tasti dopo!
 
         backgroundBuffer = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_ARGB);
@@ -70,41 +82,89 @@ public class GamePanel extends JPanel implements ActionListener{
         //player[1] = new Snake(player[0].getX(),player[0].getY()+DIM_GRID_LINES);
     }
     protected void paintComponent(Graphics g) {
-        if(collisione){
-            drawEndGame(g);
+        /*
+
+            CREO L'IMMAGINA E POI LA CARICO IN UNA BOTTA SOLA
+            QUESTO PER EVITARE DI SCRIVERE SVARIATE VOLTE AL SECONDO SULLO SCHERMO TUTTI I VARI QUADRATINI
+            CAUSAVA IL FLIKKER DELLA FINESTRA
+
+        */
+        // CREO IMMAGINE SE NON È ANCORA STATA SETTATA
+        if (offScreenImage == null || offScreenImage.getWidth(null) != SCREEN_WIDTH || offScreenImage.getHeight(null) != SCREEN_HEIGHT) {
+            offScreenImage = createImage(SCREEN_WIDTH, SCREEN_HEIGHT);
+            offScreenGraphics = offScreenImage.getGraphics();
+        }
+        
+        if(collisione){// CONTROLLO SE IN QUELL'ISTANTE VADO A COLLIDERE CON QUALCOSA
+            drawEndGame();
         }else{
-            super.paintComponent(g); // pulisce il pannello
-            g.drawImage(backgroundBuffer, 0, 0, null);
+            
+            offScreenGraphics.clearRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);// PULISCO L'IMMAGINE
+            offScreenGraphics.drawImage(backgroundBuffer,0,0,null);// CARICO L'IMMAGINE CON LO SFONFO A SCACCHI
 
-            for(int i = 0; i < DIM_EFFETTIVA_SNAKE; i++) {
-                g.setColor(Color.BLACK);
-                g.fillRect(player[i].getX(),player[i].getY(),DIM_GRID_LINES,DIM_GRID_LINES);
-                if(i == 0) g.setColor(SNAKE_HEAD_COLOR);
-                else{g.setColor(SNAKE_BODY_COLOR);}
-                g.fillRect(player[i].getX()+PADDING_SNAKE, player[i].getY()+PADDING_SNAKE, MAX_SIZE_SNAKE_DRAW, MAX_SIZE_SNAKE_DRAW);
+            for(int i = 0; i < DIM_EFFETTIVA_SNAKE; i++) {// DISEGNO IL SERPENTE NEL SUO STATO ATTUALE
+                offScreenGraphics.setColor(Color.BLACK);
+                offScreenGraphics.fillRect(player[i].getX(),player[i].getY(),DIM_GRID_LINES,DIM_GRID_LINES);
+                if(i == 0) offScreenGraphics.setColor(SNAKE_HEAD_COLOR);
+                else{offScreenGraphics.setColor(SNAKE_BODY_COLOR);}
+                offScreenGraphics.fillRect(player[i].getX()+PADDING_SNAKE, player[i].getY()+PADDING_SNAKE, MAX_SIZE_SNAKE_DRAW, MAX_SIZE_SNAKE_DRAW);
             }
-
-            if(mela_mangiata){
+            if(mela_mangiata){// SE LA MELA È STATA MANGIATA CREO UNA NUOVA MELA CON COORDINATE RANDOM
                 mela = new Apple(((int)(Math.random()*(SCREEN_WIDTH/DIM_GRID_LINES))*DIM_GRID_LINES),((int)(Math.random()*(SCREEN_HEIGHT/DIM_GRID_LINES))*DIM_GRID_LINES));
                 mela_mangiata = false;
-            } 
-            g.setColor(Color.BLACK);
-            g.fillRect(mela.getX(),mela.getY(),DIM_GRID_LINES,DIM_GRID_LINES);
-            g.setColor(APPLE_COLOR);
-            g.fillRect(mela.getX()+PADDING_APPLE,mela.getY()+PADDING_APPLE,MAX_SIZE_APPLE_DRAW,MAX_SIZE_APPLE_DRAW);
+            }
+            // DISEGNO LA MELA A SCHERMO
+            offScreenGraphics.setColor(Color.BLACK);
+            offScreenGraphics.fillRect(mela.getX(),mela.getY(),DIM_GRID_LINES,DIM_GRID_LINES);
+            offScreenGraphics.setColor(APPLE_COLOR);
+            offScreenGraphics.fillRect(mela.getX()+PADDING_APPLE,mela.getY()+PADDING_APPLE,MAX_SIZE_APPLE_DRAW,MAX_SIZE_APPLE_DRAW);
+        }
+        // DISEGNO EFFETTIVAMENTE L'IMMAGINE A SCHERMO IN UN COLPO SOLO
+        // LO METTO FUORI DALL'IF PERCHÈ offScreenGraphics È GLOBALE E MI PERMETTE DI SFRUTTARLO ANCHE PER LA CASISTICA GAME OVER
+        g.drawImage(offScreenImage, 0, 0, this);
+    }
+    public void drawEndGame(){
+        String temp = "";
+        int dim = contaRigheFile();
+        int offset = ((SCREEN_HEIGHT/DIM_GRID_LINES)-dim)/2;
+        
+        try{
+            Scanner s = new Scanner(new FileReader(FILE_END_GAME));
+            for(int i = 0; i < (SCREEN_HEIGHT/DIM_GRID_LINES) ; i++){
+
+                if(s.hasNextLine() && i>=offset)temp = s.nextLine();
+                else{temp = RIGA_NERA;}
+                
+                for(int j = 0; j<(SCREEN_WIDTH/DIM_GRID_LINES) ; j++){
+                     if(temp.charAt(j) == 'X'){
+                        // disegno quadrato rosso di game over
+                        offScreenGraphics.setColor(Color.RED);
+                    }else{
+                        offScreenGraphics.setColor(Color.BLACK);
+                        // disegno quadrato nero di sfondo
+                    }
+                    offScreenGraphics.fillRect(j * DIM_GRID_LINES, i * DIM_GRID_LINES, DIM_GRID_LINES, DIM_GRID_LINES);
+                }
+            }
+            s.close();
+        }catch(Exception e){
+            e.printStackTrace();
         }
     }
-    public void drawEndGame(Graphics g){
-        for(int i = 0; i < (SCREEN_HEIGHT/DIM_GRID_LINES) ; i++){
-            for(int j = 0; j<(SCREEN_WIDTH/DIM_GRID_LINES) ; j++){
-                if((i+j)%2==0){
-                    g.setColor(Color.RED);
-                }else{
-                    g.setColor(Color.BLACK);
-                }
-                g.fillRect(j * DIM_GRID_LINES, i * DIM_GRID_LINES, DIM_GRID_LINES, DIM_GRID_LINES);
+    public int contaRigheFile(){
+        String temp = "";
+        int i = 0;
+        try{
+            Scanner s = new Scanner(new FileReader(FILE_END_GAME));
+            while(s.hasNextLine()){
+                temp = s.nextLine();
+                i++;
             }
+            s.close();
+        }catch(Exception e){
+            e.printStackTrace();
         }
+        return i;
     }
     public void actionPerformed(ActionEvent e) {
         // Questo codice viene eseguito automaticamente ogni 100ms
@@ -121,7 +181,7 @@ public class GamePanel extends JPanel implements ActionListener{
         Toolkit.getDefaultToolkit().sync();//<--- comando muy importante per la fluidità
     }
 
-    public void move(){// devo sapere la direzione
+    public void move(){
         int x  = 0, y = 0;
         switch(direction){
             case 'W':{//nord
