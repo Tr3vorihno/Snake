@@ -1,6 +1,5 @@
 /*
- *  TODO: aggiungere gioco "infinito" quindi tasto di restart del gioco
- *        aggiungere punteggi e record con classifica tramite file
+ *  TODO: aggiungere punteggi e record con classifica tramite file
  */
 
 import java.awt.*;
@@ -17,6 +16,9 @@ import javax.imageio.ImageIO;
 import java.io.File;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 
 public class GamePanel extends JPanel implements ActionListener{
 

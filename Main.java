@@ -6,7 +6,7 @@ public class Main{
         GamePanel g = new GamePanel();
         frame.add(g);
 
-        frame.setTitle("Snake Clone");
+        frame.setTitle("Snake");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Chiude il processo quando premi la X
         frame.setResizable(false); // blocca la dimensione
         frame.pack(); // Adatta la finestra alla grandezza del pannello interno
