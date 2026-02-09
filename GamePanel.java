@@ -25,7 +25,7 @@ public class GamePanel extends JPanel implements ActionListener{
 
     //clock
     private Timer timer;
-    private static int DELAY = 120; // velocita di refresh in ms
+    private static int DELAY = 200; // velocita di refresh in ms
 
     //impostazioni campo da gioco
     private final static Color FIELD_COLOR_1 = new Color(138, 201, 38);//chiaro
@@ -59,7 +59,7 @@ public class GamePanel extends JPanel implements ActionListener{
     private static boolean FLIKKER_END_GAME = false; 
     private static int FLIKKER_TIMER = 0; 
     private static boolean GAME_STARTED = false;
-    private Apple mela = new Apple(((int)(Math.random()*(SCREEN_WIDTH/DIM_GRID_LINES))*DIM_GRID_LINES),((int)(Math.random()*(SCREEN_HEIGHT/DIM_GRID_LINES))*DIM_GRID_LINES));
+    private Apple mela ;//= insertRightApple();
     private Snake[] player = new Snake[MAX_SIZE_SNAKE_VECTOR];
     private BufferedImage backgroundBuffer;  // CREO UN IMMAGINE DELLE SFONDO CHE POI CARICO UNA VOLTA SOLA NEL COSTRUTTORE
     private JButton playButton;
@@ -195,7 +195,7 @@ public class GamePanel extends JPanel implements ActionListener{
             offScreenGraphics.fillRect(player[i].getX()+PADDING_SNAKE, player[i].getY()+PADDING_SNAKE, MAX_SIZE_SNAKE_DRAW, MAX_SIZE_SNAKE_DRAW);
         }
         if(mela_mangiata){// SE LA MELA È STATA MANGIATA CREO UNA NUOVA MELA CON COORDINATE RANDOM
-            mela = new Apple(((int)(Math.random()*(SCREEN_WIDTH/DIM_GRID_LINES))*DIM_GRID_LINES),((int)(Math.random()*(SCREEN_HEIGHT/DIM_GRID_LINES))*DIM_GRID_LINES));
+            mela = insertRightApple();
             mela_mangiata = false;
         }
         // DISEGNO LA MELA A SCHERMO
@@ -364,6 +364,20 @@ public class GamePanel extends JPanel implements ActionListener{
         this.add(scritta_finale);
         this.add(playButton);
         this.add(title);
+    }
+    public Apple insertRightApple(){
+        int x = ((int)(Math.random()*(SCREEN_WIDTH/DIM_GRID_LINES))*DIM_GRID_LINES), y = ((int)(Math.random()*(SCREEN_HEIGHT/DIM_GRID_LINES))*DIM_GRID_LINES);
+        while(!checkCollisionsInAppleSpawn(x,y)){
+            x = ((int)(Math.random()*(SCREEN_WIDTH/DIM_GRID_LINES))*DIM_GRID_LINES);
+            y = ((int)(Math.random()*(SCREEN_HEIGHT/DIM_GRID_LINES))*DIM_GRID_LINES);
+        }
+        return new Apple(x,y);
+    }
+    public boolean checkCollisionsInAppleSpawn(int x, int y){
+        for(int i = 0 ; i < DIM_EFFETTIVA_SNAKE ; i++){
+            if(x == player[i].getX() && y == player[i].getY()) return false;
+        }
+        return true;
     }
     
 }
