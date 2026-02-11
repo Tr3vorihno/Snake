@@ -21,55 +21,93 @@ public class GamePanel extends JPanel implements ActionListener{
 
     //clock
     private Timer timer;
-    private static int DELAY = 100; // velocita di refresh in ms
+    private final int DELAY = 100; 
+    // velocita di refresh in ms
 
-    //impostazioni campo da gioco
-    private final static Color FIELD_COLOR_1 = new Color(138, 201, 38);//chiaro
-    private final static Color FIELD_COLOR_2 = new Color(125, 184, 30);//scuro
+    //impostazioni campo da gioco ; setto il campo da gioco come se fosse una scacchiera
+    private final Color FIELD_COLOR_1 = new Color(138, 201, 38);
+    //chiaro
+    private final Color FIELD_COLOR_2 = new Color(125, 184, 30);
+    //scuro
 
     // impostazioni schermo
-    private final static int SCREEN_HEIGHT = 600;
-    private final static int SCREEN_WIDTH = 600;
-    private final static int DIM_GRID_LINES = 30;//==================================================================================
+    private final int SCREEN_HEIGHT = 600;
+    private final int SCREEN_WIDTH = 600;
+    private final int DIM_GRID_LINES = 30;
+    // DIMENSIONE CASELLA DI GIOCO
 
     //impostazioni del serpente
-    private final static int MAX_SIZE_SNAKE_VECTOR = 255;
-    private static int DIM_EFFETTIVA_SNAKE = 1;
-    private final static Color SNAKE_HEAD_COLOR = new Color(227, 170, 24);// colore testa (primo elemento array snake)
-    private final static Color SNAKE_BODY_COLOR = new Color(232, 245, 102);// colore del resto del corpo
-    private final static int MAX_SIZE_SNAKE_DRAW = 22;//==================================================================================
-    private final static int PADDING_SNAKE = (DIM_GRID_LINES - MAX_SIZE_SNAKE_DRAW)/2;
+    private final int MAX_SIZE_SNAKE_VECTOR = 255; 
+    // dimensione massima del serpente
+    private int DIM_EFFETTIVA_SNAKE = 1; 
+    // dimensione di partenza del serpente
+    private final Color SNAKE_HEAD_COLOR = new Color(227, 170, 24);
+    // colore testa (primo elemento array snake)
+    private final Color SNAKE_BODY_COLOR = new Color(232, 245, 102);
+    // colore del resto del corpo
+    // dati utile a disegnare il serpente con bordo nero
+    private final int MAX_SIZE_SNAKE_DRAW = 22;
+    private final int PADDING_SNAKE = (DIM_GRID_LINES - MAX_SIZE_SNAKE_DRAW)/2;
+    //#
     private char direction = 'w';
+    // direzione in cui punta il serpente
+    private Snake[] player = new Snake[MAX_SIZE_SNAKE_VECTOR];
+    // dichiarazione del serpente
+
     //impostazioni MELA
-    private final static Color APPLE_COLOR = new Color(197, 34, 51);
-    private final static int MAX_SIZE_APPLE_DRAW = 22;
-    private final static int PADDING_APPLE = (DIM_GRID_LINES - MAX_SIZE_APPLE_DRAW)/2;
+    private final Color APPLE_COLOR = new Color(197, 34, 51);
+    // dati utile a disegnare il serpente con bordo nero
+    private final int MAX_SIZE_APPLE_DRAW = 22;
+    private final int PADDING_APPLE = (DIM_GRID_LINES - MAX_SIZE_APPLE_DRAW)/2;
+    //#
+    private Apple mela ; // dichiarazione mela
+
     //impostazioni partita
-    private SoundManager soundFX = new SoundManager();
+    private SoundManager soundFX = new SoundManager(); 
+    // oggetto gestisce i suoni in gioco
     private final URL eat_apple = getClass().getResource("res/eat.wav");
-    //private final String eat_apple = "res/eat.wav";
-    private final URL ded_apple = getClass().getResource("res/ded.wav");
-    //private final String ded_apple = "res/ded.wav";
+    // url che punta al file di suono richiamato quando la serpe mangia la mela
+    private final URL ded_apple = getClass().getResource("res/ded.wav"); 
+    // url che punta al file di suono richiamato quando la serpe muore
+    private boolean checkSound = false;
+    // variabile che riproduce una sola volta il suono di morte del serpente
     private boolean mela_mangiata = true;
+    // vera se la mela risulta mangiata, se vera richiama la funzione che andrà a de-allocare la vecchia mela creandone 
+    //una di nuova e poi riporta la booleana a false : vedi 'drawGame' riga circa 216
     private boolean collisione = false;
+    // se collisione diventa true allora la partita risulta finita e quindi il player ha person, viene riportata a false in reset, e mi starta la schermata di end game
     private final static String PATH_FILE_END_GAME = "/res/game_over.txt";
-    //private final InputStream FILE_END_GAME = getClass().getResourceAsStream("/res/game_over.txt");
-    //private final static String FILE_MENU = "menu.txt";
+    // stringa che mi punta al file di game_over
     private final static String RIGA_NERA = "________________________________________";
+    // stringa vuota di riempimento per schermata game_over
+
+    // variabili con cui vado a disegnare in un colpo unico tutta la mappa e successivamente viene caricata in memoria, questo per evitare di scrivere su schermo svariate
+    // centinaia di elementi sovraccaricando cosi' il gioco
+    // vedi drawGame
     private Image offScreenImage;
     private Graphics offScreenGraphics;
+    //#
+    private BufferedImage backgroundBuffer;
+    // variabile tramite cui creo lo sfondo di game a scacchi 
+
+    // variabili che mi vanno a fare il cambio di colore della scritta game_over finale, creando l'effetto lampeggiante
+    // vedi drawEndGame
     private static boolean FLIKKER_END_GAME = false;
     private static int FLIKKER_TIMER = 0;
+    //#
     private static boolean GAME_STARTED = false;
-    private Apple mela ;//= insertRightApple();
-    private Snake[] player = new Snake[MAX_SIZE_SNAKE_VECTOR];
-    private BufferedImage backgroundBuffer;  // CREO UN IMMAGINE DELLE SFONDO CHE POI CARICO UNA VOLTA SOLA NEL COSTRUTTORE
+    // mi fa capire se il gioco è cominciato o meno, quindi se devo andare a presentare la schermata di menu con i vari tasti
+    
+    // variabili che mi gestiscono i vari bottoni di fine gioco inizio gioco e semplice visione a schermo del titolo SNAKE
     private JButton playButton;
     private JButton title;
-    private JButton scritta_finale;
-    private boolean checkSound = false;
-    private final URL pathPlay = getClass().getResource("res/play.png");
+    private JButton scritta_finale; // risulta invisibile e a schermo intero
+    // locazione delle foto che vado ad inserire nei bottoni
+    private final URL pathPlay = getClass().getResource("res/play.png"); 
     private final URL pathSnake = getClass().getResource("res/snake.png");
+    //#
+    
+
     public GamePanel(){
         this.setLayout(null);
         timer = new Timer(DELAY, this);
